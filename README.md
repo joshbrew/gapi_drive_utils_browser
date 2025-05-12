@@ -7,6 +7,103 @@
 
 The module is intended to simplify browser usage (it interacts with the DOM for file downloads, UI, and localStorage for token persistence) and expects Google API scripts to be loaded as script tags (the class will self-load them and await window.gapi/window.google). There is a lot of boilerplate required so we just went ahead and generated a ton of it for typical clerical needs with drive, sheets, and calendars. It's decently well tested and up to date with the latest api requirements (client Id only!)
 
+
+This single-file utility centralizes Google Drive, Sheets, and Calendar operations—plus a test interactive file browser class—so you can bootstrap integration rapidly, with minimal boilerplate and clear method APIs for programmatic or AI-driven workflows.  
+
+## Usage Examples
+
+### 1. Initialize & Sign In
+```ts
+import { GFileBrowser } from './GDrive';
+
+// Instantiate with your OAuth client ID
+const clientId = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+const gdrive = new GFileBrowser(clientId, { directory: 'AppData', persistToken: true });
+
+// Trigger sign-in (e.g. on button click)
+document.getElementById('auth-button')!.addEventListener('click', async () => {
+  await gdrive.handleUserSignIn();
+  console.log('Signed in, token:', gdrive.tokenResponse.access_token);
+});
+```
+
+### 2. Upload a File to Drive
+
+```ts
+// Upload a Blob or string as a CSV into your root AppData folder
+const csvData = 'col1,col2\nfoo,123\nbar,456';
+await gdrive.uploadFileToGoogleDrive(
+  csvData,
+  'example.csv',
+  'text/csv',
+  gdrive.directoryId,
+  undefined, // no progress callback
+  /* overwrite= */ true
+);
+console.log('Uploaded example.csv');
+```
+
+### 3. Download or Export a Sheet
+
+```ts
+// Download a Google Sheet tab as CSV without auto-saving to disk
+const blob = await gdrive.downloadFileByName(
+  'MonthlyReport',
+  'text/csv',
+  undefined,
+  /* saveToDisk= */ false,
+  gdrive.directoryId
+);
+const csvText = await blob.text();
+console.log('Sheet CSV contents:', csvText);
+```
+
+### 4. Append Data to a Sheet (auto-create if needed)
+
+```ts
+// Appends rows to “Sales” sheet inside “Analytics.xlsx” spreadsheet (creates sheet if missing)
+await gdrive.appendToGoogleSheetOrCreateTab(
+  'Analytics.xlsx',
+  'Sales',
+  [
+    ['2025-05-12', 'Q2 Launch', 2500],
+    ['2025-05-13', 'Q2 Follow-up', 1800],
+  ],
+  'USER_ENTERED',
+  gdrive.directory
+);
+console.log('Appended 2 rows to Sales tab');
+```
+
+### 5. Create a Calendar Event
+
+```ts
+// Create a one-off meeting in the “Work” calendar
+const calendars = await gdrive.listAllCalendars();
+const workCal = calendars.find(c => c.summary === 'Work')!;
+await gdrive.createEvent(workCal.id, {
+  summary: 'Project Sync',
+  location: 'Zoom',
+  description: 'Weekly status update',
+  start: { dateTime: new Date().toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  end:   { dateTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  sendUpdates: 'none'
+});
+console.log('Event created in Work calendar');
+```
+
+### 6. Embed a File Browser UI
+
+```ts
+// Inject a full test file-browser into your page
+await gdrive.createFileBrowser('#file-browser-container');
+// Now users can navigate, upload, download and share files via the UI
+```
+
+---
+
+
+
 ## GDrive Class
 **GDrive** is the core class providing methods for Google API interactions. It maintains OAuth2 state and a default Drive folder (by default named `"AppData"`, configurable via the constructor). Key features and methods include:
 
@@ -148,8 +245,6 @@ UI Helpers:
   - `discoveryDocs` & `scope`: customize APIs and OAuth scopes.
 
 ---
-
-This single-file utility centralizes Google Drive, Sheets, and Calendar operations—plus a test interactive file browser class—so you can bootstrap integration rapidly, with minimal boilerplate and clear method APIs for programmatic or AI-driven workflows.  
 
 
 ## CSV.ts – Dependency-Free Browser CSV/TSV Utility
@@ -315,8 +410,9 @@ Handles:
 5. **Add notes**
 
    ```ts
-   CSV.addNote(1, "Review this entry");
+   CSV.addNote(1, "Review this entry"); //row to add note to
    const csvWithNotes = CSV.processArraysForCSV(rows, ",", header, true);
+   CSV.clearNotes(); //clear backed up notes after writing
    ```
 
 No build step needed—just bundle or drop into your TS project and you’re done.
