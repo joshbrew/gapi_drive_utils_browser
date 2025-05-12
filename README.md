@@ -14,11 +14,11 @@ This single-file utility centralizes Google Drive, Sheets, and Calendar operatio
 
 ### 1. Initialize & Sign In
 ```ts
-import { GFileBrowser } from './GDrive';
+import { GDrive } from './GDrive';
 
 // Instantiate with your OAuth client ID
 const clientId = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
-const gdrive = new GFileBrowser(clientId, { directory: 'AppData', persistToken: true });
+const gdrive = new GDrive(clientId, { directory: 'AppData', persistToken: true });
 
 // Trigger sign-in (e.g. on button click)
 document.getElementById('auth-button')!.addEventListener('click', async () => {
@@ -95,7 +95,7 @@ console.log('Event created in Work calendar');
 ### 6. Embed a File Browser UI
 
 ```ts
-// Inject a full test file-browser into your page
+// Inject a full test file-browser into your page, import GFileBrowser instead of GDrive
 await gdrive.createFileBrowser('#file-browser-container');
 // Now users can navigate, upload, download and share files via the UI
 ```
