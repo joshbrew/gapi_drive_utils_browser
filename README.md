@@ -1,5 +1,7 @@
 # GDrive.ts – Google Drive/Calendar/Sheets Integration Utility
 
+`npm i gapi_util_wrapper` or just bring GDrive.ts into your local project as it runs standalone.
+
 ## Overview
 **GDrive.ts** provides a TypeScript module to handle Google Drive file operations, Google Sheets updates, and Google Calendar events through the Google API client. It encapsulates authentication (using Google OAuth2 **TokenClient** from Google Identity Services) and offers a high-level API to manage files (upload, download, search, share), spreadsheets (create or append data), and calendar events (create, list, delete, share). 
 
