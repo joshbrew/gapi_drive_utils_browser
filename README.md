@@ -150,146 +150,171 @@ UI Helpers:
 This single-file utility centralizes Google Drive, Sheets, and Calendar operations—plus a test interactive file browser class—so you can bootstrap integration rapidly, with minimal boilerplate and clear method APIs for programmatic or AI-driven workflows.  
 
 
-# CSV.ts – Dependency-Free Browser CSV/TSV Utility
+## CSV.ts – Dependency-Free Browser CSV/TSV Utility
 
-## Overview
+### Overview
 
-**CSV.ts** is a TypeScript module for robust, standards-compliant CSV/TSV handling in the browser, with zero external dependencies. It provides:
+**CSV.ts** is a zero-dependency TypeScript module for robust, standards-compliant CSV/TSV handling in the browser. It supports:
 
-* RFC-4180-compliant quoting and parsing (handles commas, tabs, line breaks, and escaped quotes)
-* Automatic delimiter detection (`,`, `\t`, `;`, `|`)
+* RFC-4180-compliant quoting and parsing (commas, tabs, line breaks, escaped quotes)
+* Automatic delimiter sniffing (`,`, `\t`, `;`, `|`)
 * Optional UTF-8 BOM for Excel compatibility
-* Flexible header generation when missing
-* Per-row “notes” appended as comment columns
-* Safe filename sanitization and extension auto-switching
-* Raw and structured file‐open APIs (multi-line field support)
-* Tab-delimited (TSV) mode via a single flag
+* Flexible header row generation
+* Per-row “notes” appended as an extra column
+* Safe filename sanitization and extension auto-add
+* Both parsed and raw file-open APIs (multi-line fields preserved)
+* Simple TSV mode via a flag
 
-Ideal for client-side data export/import, quick prototyping, or interactive UIs without pulling in any packages.
+Ideal for client-side exports/imports, prototyping, or interactive UIs—no libraries required.
 
-## CSV Class
+---
 
-**CSV** is the central class exposing instance- and static-level I/O and processing methods. It lets you wire up `<input type="file">` or `<button>` elements, attach a callback for when a file’s read, and produce fully-escaped CSV/TSV strings for download.
+## API
 
-### Constructor
+All methods are static—there’s no more constructor or instance state. You can call them directly or wire them up to your buttons/inputs.
 
-```ts
-constructor(
-  onOpen?: (data: string[][], header: string[], path: string) => void,
-  saveButtonId?: string,
-  openButtonId?: string
-)
-```
+### Notes
 
-* `onOpen(data, header, path)` — called after parsing a user-selected file
-* `saveButtonId` — ID of a button that triggers `CSV.saveCSV()`
-* `openButtonId` — ID of a button that triggers `CSV.openCSV()`
+* `CSV.addNote(idx: number, text: string)`
+  Register a “note” to be appended at row `idx` when serializing.
+* `CSV.clearNotes()`
+  Remove all registered notes.
 
-### Instance Methods
+---
 
-* `addNote(idx: number, text: string)`
-  Registers a note to append as an extra column on row `idx`.
-* `processArraysForCSV(data, delimiter, header, saveNotes)` → `string`
-  Build a CSV/TSV string from an array of arrays or pre-joined strings.
-
-  * `data`: `string[]` or `any[][]`
-  * `delimiter`: `","` or `"\t"`
-  * `header`: optional array of column names; auto-generates `col1`, `col2`,… if omitted
-  * `saveNotes`: include registered notes as a trailing column
-
-### Static I/O Methods
-
-* `static saveCSV(csvText: string, name?: string): void`
-  Kicks off a download of the given CSV/TSV text (auto-prepends BOM for Excel).
-* `static openCSV(delimiter?: string, onOpen?): Promise<{ data:string[][]; header:string[]; filename:string }>`
-  Opens a file picker for `.csv`/`.tsv`, auto-detects delimiter if omitted, parses into a 2D string array.
-* `static openCSVRaw(onOpen?): Promise<{ data:string; filename:string }>`
-  Opens a file picker and returns the unparsed file content (multi-line fields preserved).
-
-## Utility Functions
-
-* **`parseLine(line: string, delim: string): string[]`**
-  Low-level parser for a single line with quoted fields.
-* **`quoteRow(row: string[], delim: string): string`**
-  Quotes any fields containing delimiters, quotes, or line breaks.
-* **`detectDelimiter(raw: string, fallback: string): string`**
-  Simple sniff on the first 1 KB to pick the most frequent of `,`, `\t`, or `;`.
-* **`splitLines(raw: string): string[]`**
-  Normalizes CRLF/LF and splits into non-empty lines.
-* **`detectEncoding(filename: string): string`**
-  Returns `"utf-8"` (with BOM for `.csv`/`.tsv`).
-* **`toISOLocal(d: Date | string): string`**
-  Formats a date into a local-time ISO string plus `(UTC±HH:MM)`.
-
-## Structured Data Processing
-
-**`static processDataForCSV(options: ProcessOptions): ProcessResult | undefined`**
-Turn an object or array of objects into CSV rows, handling:
-
-* Multiple columns, including nested arrays for multi-column FFT-style data
-* Automatic insertion of a localized timestamp column when `timestamp` is present
-* Consistent quoting and optional direct download via `options.save`
-
-### `ProcessOptions` fields
+### Serialization
 
 ```ts
-{
-  filename?: string;       // resulting filename (no extension required)
-  save?: boolean;          // auto‐trigger download
-  header?: string[];       // override column order/names
-  data: Record<string, any[]> | Record<string, any[]>[]; 
-}
+// Build a CSV/TSV string from rows
+CSV.processArraysForCSV(
+  data: Array<string | any[]>,
+  delimiter: string = ",",       // or "\t" for TSV
+  header: string[] = [],         // optional column names
+  includeNotes: boolean = false  // whether to append notes column
+): string
 ```
 
-### `ProcessResult`
+* **Returns** fully-quoted CSV/TSV text (with header row if provided).
 
 ```ts
-{
-  filename?: string;
-  header: string; // comma-joined column row + "\n"
-  body:   string; // newline-joined CSV body without header
-}
+// Download CSV/TSV text as a file
+CSV.saveCSV(
+  csvText: string,
+  filename?: string             // auto-appends “.csv” if needed
+): void
 ```
 
-## Setup & Usage
+---
 
-1. **Import & instantiate**
+### File-Open
+
+```ts
+// Prompt user to pick a .csv/.tsv, parse into rows
+CSV.openCSV(
+  delimiter?: string,                   
+  onOpen?: (data: string[][], header: string[], filename: string) => void
+): Promise<{ data: string[][]; header: string[]; filename: string }>
+```
+
+* **Auto-detects** delimiter if you pass `","` (default).
+* **Parses** quoted fields and multiline cells.
+
+```ts
+// Prompt user and get raw file text
+CSV.openCSVRaw(
+  onOpen?: (text: string, filename: string) => void
+): Promise<{ data: string; filename: string }>
+```
+
+* **Returns** entire file content—no parsing.
+
+---
+
+### Utilities
+
+* `CSV.parseLine(line: string, delim: string): string[]`
+  Parse a single CSV line with full quote-escaping logic.
+* `CSV.quoteRow(fields: string[], delim: string): string`
+  Quote and join fields into one CSV row.
+* `CSV.detectDelimiter(raw: string, fallback: string): string`
+  Sniff the most-common of `","`, `"\t"`, or `";"` in the first KB.
+* `CSV.splitLines(raw: string): string[]`
+  Normalize CRLF/LF and drop empty lines.
+* `CSV.detectEncoding(filename: string): string`
+  Chooses `"utf-8"` (with BOM for `.csv`/`.tsv`).
+* `toISOLocal(d: Date|string): string`
+  Produce a local-time ISO timestamp with `(UTC±HH:MM)`.
+
+---
+
+### Structured Data Export
+
+```ts
+CSV.processDataForCSV(options: ProcessOptions): ProcessResult | undefined
+```
+
+* **`ProcessOptions`**
+
+  ```ts
+  {
+    filename?: string;      // without “.csv”
+    save?: boolean;         // triggers download if true
+    header?: string[];      // column order override
+    data: Record<string, any[]> | Record<string, any[]>[];
+  }
+  ```
+* **`ProcessResult`**
+
+  ```ts
+  {
+    filename?: string;
+    header: string;   // comma-joined header + "\n"
+    body:   string;   // row data (no header)
+  }
+  ```
+
+Handles:
+
+* Arrays of arrays or objects with array-valued columns
+* Automatic “localized” timestamp column if you include `timestamp`
+* Fully quoted output and optional immediate download
+
+---
+
+### Quick Start
+
+1. **Import module**
 
    ```ts
-   import { CSV } from "./csv-utils";
-   const csvUtil = new CSV((data, header, name) => {
-     console.log("Loaded:", name, header, data);
-   }, "saveBtnId", "openBtnId");
+   import { CSV, parseCSVData, toISOLocal } from "./csv-utils";
    ```
-2. **Add notes** (optional)
+2. **Generate CSV text**
 
    ```ts
-   csvUtil.addNote(2, "Check this row!");
-   ```
-3. **Process arrays**
-
-   ```ts
-   const csvText = csvUtil.processArraysForCSV(
-     [["Alice", 30], ["Bob", 25]],
-     ",",
-     ["Name","Age"],
-     true
-   );
+   const rows = [["Alice", 30], ["Bob", 25]];
+   const header = ["Name","Age"];
+   const csvText = CSV.processArraysForCSV(rows, ",", header);
    CSV.saveCSV(csvText, "users.csv");
    ```
-4. **Open & parse a file**
+3. **Open & parse**
 
    ```ts
-   CSV.openCSV().then(({ data, header, filename }) => {
-     // data: string[][], header: string[], filename: string
+   CSV.openCSV().then(({data, header, filename}) => {
+     console.log("Loaded", filename, header, data);
    });
    ```
-5. **Raw read**
+4. **Raw read**
 
    ```ts
    CSV.openCSVRaw((text, name) => {
      console.log("Raw content of", name, text);
    });
    ```
+5. **Add notes**
 
-No build step required—just include in your TypeScript project, bundle however you like, and you’re ready to handle CSV/TSV in-browser without a hitch.
+   ```ts
+   CSV.addNote(1, "Review this entry");
+   const csvWithNotes = CSV.processArraysForCSV(rows, ",", header, true);
+   ```
+
+No build step needed—just bundle or drop into your TS project and you’re done.

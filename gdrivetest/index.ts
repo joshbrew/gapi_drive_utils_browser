@@ -6,7 +6,7 @@ import './index.css';
 // ——————————————————————————————————————————
 // Instantiate with OAuth client ID & root folder
 // ——————————————————————————————————————————
-const clientId = '849761124848-uolvtqiurtjcnql91i224olp2diipeca.apps.googleusercontent.com';
+const clientId = ''; //dummy id
 const gdrive = new GFileBrowser(clientId, { directory: 'AppData' });
 
 
